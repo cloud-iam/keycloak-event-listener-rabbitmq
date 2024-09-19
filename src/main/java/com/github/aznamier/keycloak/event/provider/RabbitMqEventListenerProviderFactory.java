@@ -3,19 +3,22 @@ package com.github.aznamier.keycloak.event.provider;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
-import java.io.IOException;
-import java.util.concurrent.TimeoutException;
-//
-import java.io.*;
-import java.security.*;
-import javax.net.ssl.*;
-//
 import org.jboss.logging.Logger;
 import org.keycloak.Config.Scope;
 import org.keycloak.events.EventListenerProvider;
 import org.keycloak.events.EventListenerProviderFactory;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
+
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.KeyStore;
+import java.util.concurrent.TimeoutException;
 
 public class RabbitMqEventListenerProviderFactory implements EventListenerProviderFactory {
 
@@ -39,8 +42,7 @@ public class RabbitMqEventListenerProviderFactory implements EventListenerProvid
             if (channel == null || !channel.isOpen()) {
                 channel = connection.createChannel();
             }
-        }
-        catch (IOException | TimeoutException e) {
+        } catch (IOException | TimeoutException e) {
             log.error("keycloak-to-rabbitmq ERROR on connection to rabbitmq", e);
         }
     }
@@ -48,7 +50,10 @@ public class RabbitMqEventListenerProviderFactory implements EventListenerProvid
     @Override
     public void init(Scope config) {
         cfg = RabbitMqConfig.createFromScope(config);
+        log.error("starting");
+
         this.connectionFactory = new ConnectionFactory();
+        log.error("started ");
 
         this.connectionFactory.setUsername(cfg.getUsername());
         this.connectionFactory.setPassword(cfg.getPassword());
@@ -59,47 +64,44 @@ public class RabbitMqEventListenerProviderFactory implements EventListenerProvid
 
         if (cfg.getUseTls()) {
             try {
-                Boolean context = false;
+                boolean context = false;
                 SSLContext c = SSLContext.getInstance("TLSv1.2");
 
                 TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
-                if (! cfg.getTrustStore().isEmpty()){        
+                if (!cfg.getTrustStore().isEmpty()) {
                     char[] trustPassphrase = cfg.getTrustStorePass().toCharArray();
                     KeyStore tks = KeyStore.getInstance("JKS");
-                    tks.load(new FileInputStream(cfg.getTrustStore()), trustPassphrase);
-            
+                    tks.load(Files.newInputStream(Paths.get(cfg.getTrustStore())), trustPassphrase);
+
                     tmf.init(tks);
 
                     c.init(null, tmf.getTrustManagers(), null);
                     context = true;
-                }               
-                
+                }
+
                 KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
-                if (! cfg.getKeyStore().isEmpty()){
+                if (!cfg.getKeyStore().isEmpty()) {
                     char[] keyPassphrase = cfg.getKeytStorePass().toCharArray();
                     KeyStore ks = KeyStore.getInstance("PKCS12");
-                    ks.load(new FileInputStream(cfg.getKeyStore()), keyPassphrase);
-                    
+                    ks.load(Files.newInputStream(Paths.get(cfg.getKeyStore())), keyPassphrase);
+
                     kmf.init(ks, keyPassphrase);
-                    
-                    if (context){
+
+                    if (context) {
                         c.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
-                    }
-                    else{
+                    } else {
                         c.init(kmf.getKeyManagers(), null, null);
                         context = true;
                     }
                 }
 
-                if ( context ){
+                if (context) {
                     this.connectionFactory.useSslProtocol(c);
-                }
-                else {
+                } else {
                     this.connectionFactory.useSslProtocol();
                 }
-                
-            }
-            catch (Exception e) {
+
+            } catch (Exception e) {
                 log.error("Could not use SSL protocol", e);
             }
         }
@@ -115,8 +117,7 @@ public class RabbitMqEventListenerProviderFactory implements EventListenerProvid
         try {
             channel.close();
             connection.close();
-        }
-        catch (IOException | TimeoutException e) {
+        } catch (IOException | TimeoutException e) {
             log.error("keycloak-to-rabbitmq ERROR on close", e);
         }
     }
