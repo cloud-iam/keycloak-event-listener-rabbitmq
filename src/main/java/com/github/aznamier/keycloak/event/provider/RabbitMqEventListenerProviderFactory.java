@@ -5,17 +5,20 @@ import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import java.io.IOException;
 import java.util.concurrent.TimeoutException;
-//
+
 import java.io.*;
-import java.security.*;
-import javax.net.ssl.*;
-//
+
 import org.jboss.logging.Logger;
 import org.keycloak.Config.Scope;
 import org.keycloak.events.EventListenerProvider;
 import org.keycloak.events.EventListenerProviderFactory;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
+
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
+import java.security.KeyStore;
 
 public class RabbitMqEventListenerProviderFactory implements EventListenerProviderFactory {
 
@@ -56,6 +59,8 @@ public class RabbitMqEventListenerProviderFactory implements EventListenerProvid
         this.connectionFactory.setHost(cfg.getHostUrl());
         this.connectionFactory.setPort(cfg.getPort());
         this.connectionFactory.setAutomaticRecoveryEnabled(true);
+        this.connectionFactory.setConnectionTimeout(cfg.getConnectionTimeout());
+        this.connectionFactory.setHandshakeTimeout(cfg.getHandshakeTimeout());
 
         if (cfg.getUseTls()) {
             try {
@@ -63,25 +68,25 @@ public class RabbitMqEventListenerProviderFactory implements EventListenerProvid
                 SSLContext c = SSLContext.getInstance("TLSv1.2");
 
                 TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
-                if (! cfg.getTrustStore().isEmpty()){        
+                if (! cfg.getTrustStore().isEmpty()){
                     char[] trustPassphrase = cfg.getTrustStorePass().toCharArray();
                     KeyStore tks = KeyStore.getInstance("JKS");
                     tks.load(new FileInputStream(cfg.getTrustStore()), trustPassphrase);
-            
+
                     tmf.init(tks);
 
                     c.init(null, tmf.getTrustManagers(), null);
                     context = true;
-                }               
-                
+                }
+
                 KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
                 if (! cfg.getKeyStore().isEmpty()){
                     char[] keyPassphrase = cfg.getKeytStorePass().toCharArray();
                     KeyStore ks = KeyStore.getInstance("PKCS12");
                     ks.load(new FileInputStream(cfg.getKeyStore()), keyPassphrase);
-                    
+
                     kmf.init(ks, keyPassphrase);
-                    
+
                     if (context){
                         c.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
                     }
@@ -97,7 +102,7 @@ public class RabbitMqEventListenerProviderFactory implements EventListenerProvid
                 else {
                     this.connectionFactory.useSslProtocol();
                 }
-                
+
             }
             catch (Exception e) {
                 log.error("Could not use SSL protocol", e);

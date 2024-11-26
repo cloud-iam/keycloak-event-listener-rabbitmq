@@ -65,6 +65,8 @@ therefore its easy for Rabbit client to subscribe to selective combinations eg:
   - `KK_TO_RMQ_EXCHANGE` - default: *amq.topic*
   - `KK_TO_RMQ_USERNAME` - default: *admin*
   - `KK_TO_RMQ_PASSWORD` - default: *admin*
+  - `KK_TO_RMQ_CONNECTION_TIMEOUT` - default: *60000*
+  - `KK_TO_RMQ_HANDSHAKE_TIMEOUT` - default: *10000*
   - `KK_TO_RMQ_USE_TLS` - default: *false*
   - `KK_TO_RMQ_KEY_STORE` - default: *empty*
   - `KK_TO_RMQ_KEY_STORE_PASS` - default: *empty*
@@ -81,6 +83,8 @@ therefore its easy for Rabbit client to subscribe to selective combinations eg:
             <property name="port" value="${env.KK_TO_RMQ_PORT:5672}"/>
             <property name="vhost" value="${env.KK_TO_RMQ_VHOST:}"/>
             <property name="exchange" value="${env.KK_TO_RMQ_EXCHANGE:amq.topic}"/>
+            <property name="connection_timeout" value="${env.KK_TO_RMQ_CONNECTION_TIMEOUT:60000}"/>
+            <property name="handshake_timeout" value="${env.KK_TO_RMQ_HANDSHAKE_TIMEOUT:10000}"/>
             <property name="use_tls" value="${env.KK_TO_RMQ_USE_TLS:false}"/>
             <property name="key_store" value="${env.KK_TO_RMQ_KEY_STORE:}"/>
             <property name="key_store_pass" value="${env.KK_TO_RMQ_KEY_STORE_PASS:}"/> 

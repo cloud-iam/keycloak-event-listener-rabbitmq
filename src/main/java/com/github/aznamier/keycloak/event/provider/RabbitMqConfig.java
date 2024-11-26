@@ -1,6 +1,7 @@
 package com.github.aznamier.keycloak.event.provider;
 
 
+import com.rabbitmq.client.ConnectionFactory;
 import org.jboss.logging.Logger;
 import org.keycloak.Config.Scope;
 import org.keycloak.events.Event;
@@ -26,6 +27,8 @@ public class RabbitMqConfig {
 	private String password;
 	private String vhost;
 	private Boolean useTls;
+    private Integer connectionTimeout;
+    private Integer handshakeTimeout;
 
 	// SSL context settings
 	private String trustStore;
@@ -36,7 +39,7 @@ public class RabbitMqConfig {
 
 
 	private String exchange;
-	
+
 	public static String calculateRoutingKey(AdminEvent adminEvent, KeycloakSession session) {
 		//KK.EVENT.ADMIN.<REALM>.<RESULT>.<RESOURCE_TYPE>.<OPERATION>
 		String routingKey = ROUTING_KEY_PREFIX
@@ -45,11 +48,11 @@ public class RabbitMqConfig {
 				+ "." + (adminEvent.getError() != null ? "ERROR" : "SUCCESS")
 				+ "." + adminEvent.getResourceTypeAsString()
 				+ "." + adminEvent.getOperationType().toString()
-				
+
 				;
 		return normalizeKey(routingKey);
 	}
-	
+
 	public static String calculateRoutingKey(Event event, KeycloakSession session) {
 		//KK.EVENT.CLIENT.<REALM>.<RESULT>.<CLIENT>.<EVENT_TYPE>
 		String routingKey = ROUTING_KEY_PREFIX
@@ -58,7 +61,7 @@ public class RabbitMqConfig {
 					+ "." + (event.getError() != null ? "ERROR" : "SUCCESS")
 					+ "." + removeDots(event.getClientId())
 					+ "." + event.getType();
-		
+
 		return normalizeKey(routingKey);
 	}
 
@@ -67,14 +70,14 @@ public class RabbitMqConfig {
 		return SPACE.matcher(SPECIAL_CHARACTERS.matcher(stringToNormalize).replaceAll(""))
 				.replaceAll("_");
 	}
-	
+
 	public static String removeDots(String stringToNormalize) {
 		if(stringToNormalize != null) {
 			return DOT.matcher(stringToNormalize).replaceAll("");
 		}
 		return stringToNormalize;
 	}
-	
+
 	public static String writeAsJson(Object object, boolean isPretty) {
 		try {
 			if(isPretty) {
@@ -87,17 +90,19 @@ public class RabbitMqConfig {
 		}
 		return "unparseable";
 	}
-	
-	
+
+
 	public static RabbitMqConfig createFromScope(Scope config) {
 		RabbitMqConfig cfg = new RabbitMqConfig();
-		
+
 		cfg.hostUrl = resolveConfigVar(config, "url", "localhost");
 		cfg.port = Integer.valueOf(resolveConfigVar(config, "port", "5672"));
 		cfg.username = resolveConfigVar(config, "username", "admin");
 		cfg.password = resolveConfigVar(config, "password", "admin");
 		cfg.vhost = resolveConfigVar(config, "vhost", "");
 		cfg.useTls = Boolean.valueOf(resolveConfigVar(config, "use_tls", "false"));
+        cfg.connectionTimeout = Integer.valueOf(resolveConfigVar(config, "connection_timeout", String.valueOf(ConnectionFactory.DEFAULT_CONNECTION_TIMEOUT)));
+        cfg.handshakeTimeout = Integer.valueOf(resolveConfigVar(config, "connection_timeout", String.valueOf(ConnectionFactory.DEFAULT_HANDSHAKE_TIMEOUT)));
 
 		// SSL context settings
 		cfg.trustStore = resolveConfigVar(config, "trust_store", "");
@@ -108,11 +113,11 @@ public class RabbitMqConfig {
 
 		cfg.exchange = resolveConfigVar(config, "exchange", "amq.topic");
 		return cfg;
-		
+
 	}
-	
+
 	private static String resolveConfigVar(Scope config, String variableName, String defaultValue) {
-		
+
 		String value = defaultValue;
 		if(config != null && config.get(variableName) != null) {
 			value = config.get(variableName);
@@ -128,10 +133,17 @@ public class RabbitMqConfig {
 			log.infof("keycloak-to-rabbitmq configuration: %s=%s%n", variableName, value);
 		}
 		return value;
-		
+
 	}
-	
-	
+
+    public Integer getConnectionTimeout() {
+        return connectionTimeout;
+    }
+
+    public Integer getHandshakeTimeout() {
+        return handshakeTimeout;
+    }
+
 	public String getHostUrl() {
 		return hostUrl;
 	}
